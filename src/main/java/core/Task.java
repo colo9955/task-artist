@@ -6,31 +6,50 @@ import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.functions;
 
 public class Task {
-
-	public static void main (String args[]) {
-		
-		SparkSession session = SparkSession.builder().appName("Java Spark SQL basic example").master("local[*]").getOrCreate();
+	
+	static SparkSession session = SparkSession.builder().appName("Java Spark SQL basic example").master("local[*]").getOrCreate();
+	
+	public static void main (String[] args) {
 		
 		session.read().format("csv").option("header", "true").load("data.csv").withColumnRenamed("Track Name","Song").createOrReplaceTempView("dataset");
 		
-		//session.sql("SELECT * FROM dataset WHERE artist=\"Muse\"").write().csv("/Users/filippocolombo/Downloads/sparkoutput");
+		Task.MaxArtist();
+		
+		Task.Joinspark();
+	}
+	
+	public static void MaxArtist() {
 		
 		//Raggruppo in base all'artista e vedo quante su canzoni sono presenti nel dataset
 		
-		session.sql("SELECT Artist, COUNT(Song) AS Canzoni FROM dataset GROUP BY Artist").createOrReplaceTempView("Somma");
+		session.sql("SELECT Artist, COUNT(Song) AS Canzoni "
+				+ "FROM dataset "
+				+ "GROUP BY Artist ").createOrReplaceTempView("Group");
 		
 		//Trovo l'artista con il maggior numero di canzoni nel dataset
 		
-		session.sql("SELECT * FROM Somma WHERE Canzoni = (SELECT MAX(Canzoni) FROM Somma)").show();
+		session.sql("SELECT * "
+				+ "FROM Group "
+				+ "WHERE Canzoni = (SELECT MAX(Canzoni) FROM Group) ").createOrReplaceTempView("MaxSong");
 		
-		session.sql("SELECT * FROM Somma  ORDER BY Canzoni DESC").show();
+		session.sql("SELECT dataset.* "
+				+ "FROM MaxSong JOIN dataset ON MaxSong.Artist = dataset.Artist ").write().option("sep", ";").csv("MaxArtist-output");
 		
-		
-		session.sql("SELECT Position, Song, Artist, Streams FROM dataset ").createOrReplaceTempView("Tab1");
-		
-		session.sql("SELECT Song AS Canzone, URL, Date, Region FROM dataset ").createOrReplaceTempView("Tab2");
-		
-		session.sql("SELECT * FROM Tab1 JOIN Tab2 ON Song = Canzone WHERE Artist=\"Muse\"").write().option("sep", ";").csv("output-spark");	
 	}
-
+		
+	public static void Joinspark() {
+		session.sql("SELECT Position, Song, Artist, Streams "
+				+ "FROM dataset ").createOrReplaceTempView("Tab1");
+		
+		session.sql("SELECT Song, URL, Date, Region "
+				+ "FROM dataset ").createOrReplaceTempView("Tab2");
+		
+		session.sql("SELECT Tab1.*, TAb2.URL, Tab2.Date, Tab2.Region "
+				+ "FROM Tab1 JOIN Tab2 "
+				+ "ON Tab1.Song = Tab2.Song "
+				+ "WHERE Artist=\"Muse\" "
+				+ "OR Artist=\"Nirvana\" "
+				+ "OR Artist=\"Michael Jackson\" "
+				+ "OR Artist LIKE \"%Beatles\" ").write().option("sep", ";").csv("output-spark");	
+	}
 }
