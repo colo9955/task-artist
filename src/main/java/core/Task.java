@@ -1,21 +1,26 @@
 package core;
 
-import org.apache.spark.sql.Dataset;
-import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
-import org.apache.spark.sql.functions;
+
 
 public class Task {
 	
-	static SparkSession session = SparkSession.builder().appName("Java Spark SQL basic example").master("local[*]").getOrCreate();
-	
+		static SparkSession session = SparkSession.builder().appName("Java Spark SQL basic example").master("local[*]").getOrCreate();
+		
+		static String output_dir;
+
 	public static void main (String[] args) {
 		
-		session.read().format("csv").option("header", "true").load("data.csv").withColumnRenamed("Track Name","Song").createOrReplaceTempView("dataset");
+		String datasets = args[0];
 		
-		Task.MaxArtist();
+		output_dir = args[1];
 		
-		Task.Joinspark();
+		
+		session.read().format("csv").option("header", "true").load(datasets).withColumnRenamed("Track Name","Song").createOrReplaceTempView("dataset");
+		
+		MaxArtist();
+		
+		Joinspark();
 	}
 	
 	public static void MaxArtist() {
@@ -33,7 +38,7 @@ public class Task {
 				+ "WHERE Canzoni = (SELECT MAX(Canzoni) FROM Group) ").createOrReplaceTempView("MaxSong");
 		
 		session.sql("SELECT dataset.* "
-				+ "FROM MaxSong JOIN dataset ON MaxSong.Artist = dataset.Artist ").write().option("sep", ";").csv("MaxArtist-output");
+				+ "FROM MaxSong JOIN dataset ON MaxSong.Artist = dataset.Artist ").write().option("sep", ";").csv(output_dir + "/MaxArtist-output");
 		
 	}
 		
@@ -50,6 +55,6 @@ public class Task {
 				+ "WHERE Artist=\"Muse\" "
 				+ "OR Artist=\"Nirvana\" "
 				+ "OR Artist=\"Michael Jackson\" "
-				+ "OR Artist LIKE \"%Beatles\" ").write().option("sep", ";").csv("output-spark");	
+				+ "OR Artist LIKE \"%Beatles\" ").write().option("sep", ";").csv(output_dir + "/output-spark");	
 	}
 }
